@@ -4,24 +4,19 @@ import matplotlib.pyplot as plt
 import reliability as rl
 import scipy.stats as ss
 import pandas as pd
+import pingouin as pg
 import numpy as np
 import openpyxl
+import sklearn.linear_model as sk
 
 reclaims = pd.read_excel('C:/Users/roman/Documents/Universidad/9no Semestre/Electiva 3/_fb205379f16688a0d5fff594e91ac7e7_data_files_DA-LSS.xlsx', sheet_name='Reclaims', header=6, usecols='A:C')
 
-"""
-pendiente, intercepto, r_value, p_value, std_err = ss.linregress(reclaims['Person'], reclaims['Reclaim'])
-gsc = sns.regplot(data = reclaims, x = 'Person', y = 'Reclaim', scatter = True, color = 'blue',
-                 line_kws={'label':'y={0:.1f}x+{1:.1f}, r_value = {2:.1f}, p_value = {3:.1f}'.format(pendiente, intercepto, r_value, p_value)})
-plt.legend(loc = 'upper right')
-plt.show()
-"""
-
-datos = reclaims.groupby(by=['Person'])['Reclaim'].value_counts()
-datos.to_dict()
-
 #Punto 1.A
-print(ss.chi2_contingency(datos))
+crosstab = pd.crosstab(reclaims['Person'], reclaims['Reclaim'])
+print(crosstab)
+prueba_chi = ss.chi2_contingency(crosstab)
+print('Valor Chi Cuadrado = ' + str(prueba_chi[0]) + ', p_value = ' + str(prueba_chi[1]) + ', grados de libertad = ' + str(prueba_chi[2]))
+print('Frecuencias: ' + str(prueba_chi[3]))
 
 #Punto 1.B
 personas = reclaims.groupby(['Person'])['Processing time'].apply(list).to_dict()
@@ -37,3 +32,36 @@ for persona in personas:
     plt.xlabel(persona)
     plt.ylabel('Timepos')
     plt.show()
+
+#Punto 1.C
+reclaims['Reclaim'] = reclaims['Reclaim'].replace(['Billing','Recalls','EB Contract','IBAN'], 'Casos A')
+#no Hubo distinct, tamnb tocó manual
+reclaims['Reclaim'] = reclaims['Reclaim'].replace(['Account closing','Status info','Matching','Stop payment'], 'Casos B')
+
+crosstab = pd.crosstab(reclaims['Processing time'], reclaims['Reclaim'])
+print(crosstab)
+
+prueba_chi = ss.chi2_contingency(crosstab)
+frecuencias = prueba_chi[3]
+print('Valor Chi Cuadrado = ' + str(prueba_chi[0]) + ', p_value = ' + str(prueba_chi[1]) + ', grados de libertad = ' + str(prueba_chi[2]))
+print('Frecuencias: ' + str(prueba_chi[3]))
+
+
+x = crosstab['Casos A']
+y = crosstab['Casos B']
+
+reg = ss.linregress(x, y)
+
+gsc = sns.scatterplot(x= x, y= y, label= "Raw data")
+plt.plot(x, reg.intercept + reg.slope*x, 'r', label='fitted line')
+plt.legend()
+plt.show()
+
+"""
+correlacion = crosstab.corr(method='spearman')
+print(correlacion)
+
+corr = pg.pairwise_corr(crosstab, method='pearson')
+corr.sort_values(by=['p-unc'])[['X', 'Y', 'n', 'r', 'p-unc']]
+print(corr)
+"""
